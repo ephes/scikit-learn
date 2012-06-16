@@ -4,7 +4,7 @@ import scipy.sparse as sp
 from sklearn.feature_extraction import FeatureHasher
 
 from nose.tools import assert_raises, assert_true
-from numpy.testing import assert_equal
+from numpy.testing import assert_array_equal, assert_equal
 
 
 def test_feature_hasher():
@@ -26,6 +26,16 @@ def test_feature_hasher():
 
         # .nnz is unreliable on coo_matrix
         assert_equal(X.tocsr().nnz, sum(len(set(x)) for x in raw_X))
+
+
+def test_hash_empty_input():
+    n_features = 16
+    raw_X = [[], (), xrange(0)]
+
+    h = FeatureHasher(n_features=n_features)
+    X = h.transform(raw_X)
+
+    assert_array_equal(X.A, np.zeros((len(raw_X), n_features)))
 
 
 def test_hasher_invalid_input():
