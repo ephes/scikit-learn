@@ -1,7 +1,9 @@
 import numpy as np
 import scipy.sparse as sp
 
+from . import _hashing
 from ..base import BaseEstimator, TransformerMixin
+from ..utils import murmurhash3_32
 
 
 class FeatureHasher(BaseEstimator, TransformerMixin):
@@ -38,16 +40,26 @@ class FeatureHasher(BaseEstimator, TransformerMixin):
 
     """
 
-    def __init__(self, n_features, dtype=np.float64, non_negative=False):
+    def __init__(self, n_features, hashfn="murmurhash3", dtype=np.float64,
+                 non_negative=False):
         if not isinstance(n_features, (int, np.integer)):
             raise TypeError("n_features must be integral, got %r (%s)"
                             % (n_features, type(n_features)))
         elif n_features < 1:
             raise ValueError("invalid number of features (%d)" % n_features)
 
-        # TODO support murmurhash and arbitrary callables
-        self._hash = np.vectorize(hash)
+        if hashfn == "murmurhash3":
+            self._hashfn = murmurhash3_32
+        elif hashfn == "python":
+            self._hashfn = hash
+        elif callable(hashfn):
+            self._hashfn = hashfn
+        else:
+            raise ValueError('expected "murmurhash3", "python" or callable'
+                             ' as hashfn argument, got %r' % hashfn)
+
         self.dtype = dtype
+        self.hashfn = hashfn
         self.n_features = n_features
         self.non_negative = non_negative
 
@@ -83,26 +95,14 @@ class FeatureHasher(BaseEstimator, TransformerMixin):
             Feature matrix, for use with estimators or further transformers.
 
         """
-        i_ind = []
-        j_ind = []
-        values = []
+        n_samples, i_ind, j_ind, values = \
+           _hashing.transform(raw_X, self._hashfn, self.n_features)
 
-        i = -1
-        for i, x in enumerate(raw_X):
-            hashes = self._hash(x)
-            signs = (hashes & 1) * 2 - 1
-            hashes >>= 1
-
-            for j, h in enumerate(hashes):
-                i_ind.append(i)
-                j_ind.append(h % self.n_features)
-                values.append(signs[j])
-
-        if i < 0:
+        if n_samples == 0:
             raise ValueError("cannot vectorize empty sequence")
 
         X = sp.coo_matrix((values, (i_ind, j_ind)), dtype=self.dtype,
-                          shape=(i + 1, self.n_features))
+                          shape=(n_samples, self.n_features))
         if self.non_negative:
             X = X.tocsr()
             np.abs(X.data, X.data)
