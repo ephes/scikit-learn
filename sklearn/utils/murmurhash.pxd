@@ -2,15 +2,15 @@
 
 cimport numpy as np
 
-cdef extern from "MurmurHash3.h":
-    void MurmurHash3_x86_32(void* key, int len, unsigned int seed,
-                            void* out)
-
-    void MurmurHash3_x86_128(void* key, int len, unsigned int seed,
-                             void* out)
-
-    void MurmurHash3_x64_128(void* key, int len, unsigned int seed,
-                             void* out)
+#cdef extern from "MurmurHash3.h":
+#    void MurmurHash3_x86_32(void* key, int len, unsigned int seed,
+#                            void* out)
+#
+#    void MurmurHash3_x86_128(void* key, int len, unsigned int seed,
+#                             void* out)
+#
+#    void MurmurHash3_x64_128(void* key, int len, unsigned int seed,
+#                             void* out)
 
 
 cpdef np.uint32_t murmurhash3_int_u32(int key, unsigned int seed)

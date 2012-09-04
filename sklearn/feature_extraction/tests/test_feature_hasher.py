@@ -5,16 +5,17 @@ from sklearn.feature_extraction import FeatureHasher
 
 from nose.tools import assert_raises, assert_true
 from numpy.testing import assert_array_equal, assert_equal
+from sklearn.utils.testing import assert_in
 
 
 def test_feature_hasher():
-    raw_X = [["foo", "bar", "baz", "foo"],  # note: duplicate
-             ["bar", "baz", "quux"]]
+    raw_X = [[u"foo", "bar", "baz", "foo"],    # note: duplicate
+             [u"bar", "baz", "quux"]]
 
     for lg_n_features in (7, 9, 11, 16, 22):
         n_features = 2 ** lg_n_features
 
-        it = (x for x in raw_X)             # iterable
+        it = (x for x in raw_X)                 # iterable
 
         h = FeatureHasher(n_features, non_negative=True)
         X = h.transform(it)
@@ -23,6 +24,8 @@ def test_feature_hasher():
         assert_equal(X.shape[1], n_features)
 
         assert_true(np.all(X.data > 0))
+        assert_equal(X[0].sum(), 4)
+        assert_equal(X[1].sum(), 3)
 
         # .nnz is unreliable on coo_matrix
         assert_equal(X.tocsr().nnz, sum(len(set(x)) for x in raw_X))
@@ -45,3 +48,5 @@ def test_hasher_invalid_input():
 
     h = FeatureHasher(n_features=np.uint16(2**6))
     assert_raises(ValueError, h.transform, [])
+    assert_raises(TypeError, h.transform, [[5.5]])
+    assert_raises(TypeError, h.transform, [[None]])

@@ -3,18 +3,18 @@ import scipy.sparse as sp
 
 from . import _hashing
 from ..base import BaseEstimator, TransformerMixin
-from ..utils import murmurhash3_32
 
 
 class FeatureHasher(BaseEstimator, TransformerMixin):
     """Implements feature hashing, aka the hashing trick.
 
-    This class turns sequences of symbolic feature names into scipy.sparse
-    matrices, using a hash function to compute the matrix column corresponding
-    to a name.
+    This class turns sequences of symbolic feature names (strings) into
+    scipy.sparse matrices, using a hash function to compute the matrix column
+    corresponding to a name. The hash function employed is the signed 32-bit
+    version of Murmurhash3.
 
-    The types of "names" supported depend on the hash function being used;
-    use Python string to "play safe".
+    Feature names of type byte string are used as-is. Unicode strings are
+    converted to UTF-8 first, but no Unicode normalization is done.
 
     This class is a low-memory alternative to DictVectorizer and
     CountVectorizer, intended for large-scale (online) learning and situations
@@ -27,6 +27,9 @@ class FeatureHasher(BaseEstimator, TransformerMixin):
         The number of features (columns) in the output matrices. Small numbers
         of features are likely to cause hash collisions, but large numbers
         will cause larger coefficient dimensions in linear learners.
+    hashfn : string, optional
+        No-op, implemented for forward compatibility with future versions
+        that might implement several different hash functions.
     dtype : NumPy type, optional
         The type of feature values. Passed to scipy.sparse matrix constructors
         as the dtype argument. Do not set this to bool, np.boolean or any
@@ -42,21 +45,15 @@ class FeatureHasher(BaseEstimator, TransformerMixin):
 
     def __init__(self, n_features, hashfn="murmurhash3", dtype=np.float64,
                  non_negative=False):
+        if hashfn != "murmurhash3":
+            raise ValueError('"murmurhash3" is the only hash function'
+                             ' currently supported, got %r' % hashfn)
+
         if not isinstance(n_features, (int, np.integer)):
             raise TypeError("n_features must be integral, got %r (%s)"
                             % (n_features, type(n_features)))
         elif n_features < 1:
             raise ValueError("invalid number of features (%d)" % n_features)
-
-        if hashfn == "murmurhash3":
-            self._hashfn = murmurhash3_32
-        elif hashfn == "python":
-            self._hashfn = hash
-        elif callable(hashfn):
-            self._hashfn = hashfn
-        else:
-            raise ValueError('expected "murmurhash3", "python" or callable'
-                             ' as hashfn argument, got %r' % hashfn)
 
         self.dtype = dtype
         self.hashfn = hashfn
@@ -95,8 +92,8 @@ class FeatureHasher(BaseEstimator, TransformerMixin):
             Feature matrix, for use with estimators or further transformers.
 
         """
-        n_samples, i_ind, j_ind, values = \
-           _hashing.transform(raw_X, self._hashfn, self.n_features)
+        n_samples, i_ind, j_ind, values = _hashing.transform(raw_X, 
+                                                             self.n_features)
 
         if n_samples == 0:
             raise ValueError("cannot vectorize empty sequence")
