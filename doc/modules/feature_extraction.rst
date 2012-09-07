@@ -489,6 +489,43 @@ Customizing the vectorizer can be very useful to handle Asian languages
 that do not use an explicit word separator such as whitespace.
 
 
+Feature hashing
+===============
+
+The class :class:`FeatureHasher` is a high-speed, low-memory vectorizer that
+uses a technique known as feature hashing, or the "hashing trick".
+Instead of building a hash table of the features encountered in training,
+as the vectorizers do, instances of ``FeatureHasher``
+apply a hash function to the features
+to determine their column index in sample matrices directly.
+The result is increased speed and reduced memory usage,
+at the expense of inspectability;
+the hasher does not remember what the input features looked like
+and has no ``inverse_transform`` method.
+
+Since the hash function might cause collisions between (unrelated) features,
+a signed hash function is used and the sign of the hash value
+determines the sign of the value stored in the output matrix for a feature;
+this way, collisions are likely to cancel out rather than accumulate error,
+and the expected mean of any output feature's value is zero
+(that is, before the absolute value is taken,
+if ``non_negative=True`` is passed to the constructor).
+
+``FeatureHasher`` is intended for boolean features or frequencies.
+If a feature occurs multiple times in a sample, its value in the output
+will be its frequency (count), so if features are intended to be booleans,
+it is up to the user to assure uniqueness of strings in the input.
+This way, feature hashing can be employed in document classification.
+However, unlike ``CountVectorizer``, ``FeatureHasher`` does not do word
+splitting or any other preprocessing except Unicode-to-UTF-8 encoding.
+
+.. topic:: References:
+
+ * Kilian Weinberger, Anirban Dasgupta, John Langford, Alex Smola and
+   Josh Attenberg (2009). `Feature hashing for large scale multitask learning
+   <http://alex.smola.org/papers/2009/Weinbergeretal09.pdf>`_. Proc. ICML.
+
+
 Image feature extraction
 ========================
 
