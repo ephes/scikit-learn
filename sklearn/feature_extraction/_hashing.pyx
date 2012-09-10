@@ -38,8 +38,8 @@ def transform(raw_X, Py_ssize_t n_features):
     cdef int idx = -1
     i = -1
     for i, x in enumerate(raw_X):
+        aux = {}
         for f in x:
-            idx += 1
             if isinstance(f, unicode):
                 f = f.encode("utf-8")
             # Need explicit type check because Murmurhash does not propagate
@@ -47,15 +47,19 @@ def transform(raw_X, Py_ssize_t n_features):
             elif not isinstance(f, bytes):
                 raise TypeError("feature names must be strings")
             h = murmurhash3_bytes_s32(f, 0)
+            dim = abs(h) % n_features
+            value = (h >= 0) * 2 - 1
+            aux[dim] = aux.get(dim, 0) + value
 
+        for dim, value in aux.iteritems():
             # grow arrays as needed
+            idx += 1
             if idx >= size:
                 size *= 2
                 resize_arrays((i_ind, j_ind, values), size)
 
             i_ind[idx] = i
-            j_ind[idx] = abs(h) % n_features
-            value = (h >= 0) * 2 - 1
+            j_ind[idx] = dim
             values[idx] = value
 
     resize_arrays((i_ind, j_ind, values), idx + 1)
